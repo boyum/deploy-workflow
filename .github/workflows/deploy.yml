@@ -10,10 +10,6 @@ on:
         required: true
         type: string
         description: 'Name of the service, must match the GCloud Run instances name'
-      gcloud-service-account-key:
-        required: true
-        type: string
-        description: 'GCloud Service Account'
       gcloud-environment-project:
         required: true
         type: string
@@ -26,10 +22,6 @@ on:
         required: true
         type: string
         description: 'Region of the GCloud Artifact'
-      gcloud-artifact-project:
-        required: true
-        type: string
-        description: 'Project ID containing the GCloud Artifact'
       gcloud-artifact-repository:
         required: true
         type: string
@@ -38,18 +30,10 @@ on:
         required: true
         type: string
         description: 'Docker Image name, do not include the tag.'
-      github-repos-token:
-        required: true
-        type: string
-        description: 'Github Token with access to Private Repos'
       terraform-file-path:
         required: true
         type: string
         description: 'Path to the terraform file managing the versions of the service'
-      slack-webhook-url:
-        required: true
-        type: string
-        description: 'Slack webhook url'
       slack-cloud-run-url:
         required: true
         type:  string
@@ -62,6 +46,16 @@ on:
         required: true
         type:  string
         description: 'URL to the logs of the GCloud instance'
+    secrets:
+      GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS:
+        required: true
+      OPERATIONS_GOOGLE_PROJECT_ID:
+        required: true
+      TOKEN_PRIVATE_REPOS: ${{ secrets.TOKEN_PRIVATE_REPOS }}
+        required: true
+      SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK: ${{ secrets.SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK }}
+        required: true
+
 
 jobs:
   deploy:
@@ -76,10 +70,10 @@ jobs:
       - uses: go-fjords/deploy-cloud-run@v1
         name: Deploy ${{ inputs.service-name }}
         with:
-          service-account-key: ${{ inputs.gcloud-service-account-key }}
-          gcloud-project-id: ${{ inputs.gcloud-environment-project-id }}
+          service-account-key: ${{ secrets.GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS }}
+          gcloud-project-id: ${{ inputs.gcloud-environment-project }}
           gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
-          gcloud-artifact-project: ${{ inputs.gcloud-artifact-project-id }}
+          gcloud-artifact-project: ${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}
           gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
           gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
           service-name: ${{ inputs.service-name }}
@@ -99,11 +93,11 @@ jobs:
       - uses: go-fjords/sync-terraform-version@v1
         name: Sync Version To Terraform
         with:
-          token-private-repos: ${{ inputs.github-repos-token }}
-          service-account-key: ${{ inputs.gcloud-service-account-key }}
-          gcloud-project-id: ${{ inputs.gcloud-environment-project-id }}
+          token-private-repos: ${{ secrets.TOKEN_PRIVATE_REPOS }}
+          service-account-key: ${{ secrets.GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS }}
+          gcloud-project-id: ${{ inputs.gcloud-environment-project }}
           gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
-          gcloud-artifact-project: ${{ inputs.gcloud-artifact-project-id }}
+          gcloud-artifact-project: ${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}
           gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
           gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
           service-name: ${{ inputs.service-name }}
@@ -118,7 +112,7 @@ jobs:
     name: Notify Slack of deploy status
     runs-on: ubuntu-latest
     env:
-      SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK }}
       SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
     steps:
       - name: Checkout
