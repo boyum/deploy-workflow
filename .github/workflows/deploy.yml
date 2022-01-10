@@ -10,10 +10,6 @@ on:
         required: true
         type: string
         description: 'Name of the service, must match the GCloud Run instances name'
-      gcloud-environment-project:
-        required: true
-        type: string
-        description: 'GCloud Project ID for the environment deployed to'
       gcloud-deploy-region:
         required: true
         type: string
@@ -34,27 +30,31 @@ on:
         required: true
         type: string
         description: 'Path to the terraform file managing the versions of the service'
-      slack-cloud-run-url:
-        required: true
-        type:  string
-        description: 'URL to the GCloud instance'
       slack-commit-url:
         required: true
         type:  string
         description: 'URL to the commit url for the the deployed version'
-      slack-logs-url:
+      github-repository:
         required: true
         type:  string
-        description: 'URL to the logs of the GCloud instance'
+        description: 'Name of GitHub repository'
     secrets:
-      GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS:
+      gcloud-environment-project:
         required: true
-      OPERATIONS_GOOGLE_PROJECT_ID:
+        type: string
+        description: 'GCloud Project ID for the environment deployed to'
+      gcloud-service-account-key:
         required: true
-      TOKEN_PRIVATE_REPOS:
+        type: string
+      gcloud-artifact-project:
         required: true
-      SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK:
+        type: string
+      private-repos-token:
         required: true
+        type: string
+      slack-webhook-url:
+        required: true
+        type: string
 
 jobs:
   deploy:
@@ -118,6 +118,9 @@ jobs:
     env:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK }}
       SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      SLACK_CLOUD_RUN_URL: https://console.cloud.google.com/run/detail/${{ inputs.gcloud-deploy-region }}/${{ inputs.service-name }}/metrics?project=${{ secrets.gcloud-environment-project }}
+      SLACK_LOGS_URL: https://console.cloud.google.com/logs/viewer?advancedFilter=resource.type%20%3D%20%22cloud_run_revision%22%0Aresource.labels.service_name%20%3D%20%22${{ inputs.service-name }}%22%0Aresource.labels.location%20%3D%20%22${{ inputs.gcloud-deploy-region }}%22%0A%20severity%3E%3DDEFAULT&${{ secrets.gcloud-environment-project }}
+      SLACK_COMMIT_URL: https://github.com/go-fjords/${{ inputs.github-repository }}/commit/${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -132,9 +135,9 @@ jobs:
         if: ${{ needs.deploy.result == 'success' }}
         uses: slackapi/slack-github-action@v1.16.0
         with:
-          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":rocket: Deployed ${{ inputs.service-name }} to ${{ inputs.environment }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ inputs.slack-cloud-run-url }}|cloud run> - <${{ inputs.slack-logs-url }}|logs> - <${{ inputs.slack-commit-url }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"
+          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":rocket: Deployed ${{ inputs.service-name }} to ${{ inputs.environment }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"
       - name: Notify Slack regarding failed deploy
         if: ${{ always() && needs.deploy.result == 'failure' }}
         uses: slackapi/slack-github-action@v1.16.0
         with:
-          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":boom: Failed to deploy ${{ inputs.service-name }} to ${{ inputs.environment }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ inputs.slack-cloud-run-url }}|cloud run> - <${{ inputs.slack-logs-url }}|logs> - <${{ inputs.slack-commit-url }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"
+          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":boom: Failed to deploy ${{ inputs.service-name }} to ${{ inputs.environment }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"

@@ -11,7 +11,7 @@
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": "<${{ inputs.slack-cloud-run-url }}|cloud run> - <${{ inputs.slack-logs-url }}|logs> - <${{ inputs.slack-commit-url }}|commit>"
+				"text": "<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>"
 			}
 		},
 		{
