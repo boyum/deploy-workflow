@@ -56,7 +56,6 @@ on:
       SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK:
         required: true
 
-
 jobs:
   deploy:
     name: Deploy
@@ -67,18 +66,23 @@ jobs:
         run: |
           export TAG=$(if [ -z "${{ github.event.inputs.tag }}" ]; then echo "${{ github.sha }}"; else echo "${{ github.event.inputs.tag }}"; fi)
           echo "::set-output name=TAG::$TAG"
-      - uses: go-fjords/deploy-cloud-run@v1
-        name: Deploy ${{ inputs.service-name }}
+      - uses: google-github-actions/setup-gcloud@v0
         with:
-          service-account-key: ${{ secrets.GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS }}
-          gcloud-project-id: ${{ inputs.gcloud-environment-project }}
-          gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
-          gcloud-artifact-project: ${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}
-          gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
-          gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
-          service-name: ${{ inputs.service-name }}
-          tag: ${{ steps.set-tag.outputs.TAG }}
-          deploy-region: ${{ inputs.gcloud-deploy-region }}
+          service_account_key: ${{ secrets.GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS }}
+          project_id: ${{ inputs.gcloud-environment-project }}
+          export_default_credentials: true
+      - name: Get Docker Image Digest
+        id: get-docker-image-digest
+        run: |
+          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ steps.set-tag.outputs.TAG }})
+          echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
+        shell: bash
+      - name: Deploy
+        run: |-
+          gcloud run deploy ${{ inputs.service-name }} \
+          --image ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }} \
+          --region ${{ inputs.cloud-deploy-region }}
+        shell: bash
 
   sync-version:
     needs: deploy
