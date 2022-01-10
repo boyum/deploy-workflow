@@ -72,7 +72,8 @@ jobs:
         run: |-
           gcloud run deploy ${{ inputs.service-name }} \
           --image ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }} \
-          --region ${{ inputs.gcloud-deploy-region }}
+          --region ${{ inputs.gcloud-deploy-region }} \
+          --project ${{ inputs.gcloud-environment-project }}
         shell: bash
 
   sync-version:
