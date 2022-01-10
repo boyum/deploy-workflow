@@ -30,10 +30,6 @@ on:
         required: true
         type: string
         description: 'Path to the terraform file managing the versions of the service'
-      slack-commit-url:
-        required: true
-        type:  string
-        description: 'URL to the commit url for the the deployed version'
       github-repository:
         required: true
         type:  string
