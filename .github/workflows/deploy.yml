@@ -41,20 +41,15 @@ on:
     secrets:
       gcloud-environment-project:
         required: true
-        type: string
         description: 'GCloud Project ID for the environment deployed to'
       gcloud-service-account-key:
         required: true
-        type: string
       gcloud-artifact-project:
         required: true
-        type: string
       private-repos-token:
         required: true
-        type: string
       slack-webhook-url:
         required: true
-        type: string
 
 jobs:
   deploy:
