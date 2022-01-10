@@ -1,0 +1,142 @@
+name: 'Deploy'
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Environment name which is being deployed to'
+      service-name:
+        required: true
+        type: string
+        description: 'Name of the service, must match the GCloud Run instances name'
+      gcloud-service-account-key:
+        required: true
+        type: string
+        description: 'GCloud Service Account'
+      gcloud-environment-project:
+        required: true
+        type: string
+        description: 'GCloud Project ID for the environment deployed to'
+      gcloud-deploy-region:
+        required: true
+        type: string
+        description: 'Region to deploy the GCloud Run instance to'
+      gcloud-artifact-region:
+        required: true
+        type: string
+        description: 'Region of the GCloud Artifact'
+      gcloud-artifact-project:
+        required: true
+        type: string
+        description: 'Project ID containing the GCloud Artifact'
+      gcloud-artifact-repository:
+        required: true
+        type: string
+        description: 'Repository containing the GCloud Artifact'
+      gcloud-artifact-image:
+        required: true
+        type: string
+        description: 'Docker Image name, do not include the tag.'
+      github-repos-token:
+        required: true
+        type: string
+        description: 'Github Token with access to Private Repos'
+      terraform-file-path:
+        required: true
+        type: string
+        description: 'Path to the terraform file managing the versions of the service'
+      slack-webhook-url:
+        required: true
+        type: string
+        description: 'Slack webhook url'
+      slack-cloud-run-url:
+        required: true
+        type:  string
+        description: 'URL to the GCloud instance'
+      slack-commit-url:
+        required: true
+        type:  string
+        description: 'URL to the commit url for the the deployed version'
+      slack-logs-url:
+        required: true
+        type:  string
+        description: 'URL to the logs of the GCloud instance'
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Tag
+        id: set-tag
+        run: |
+          export TAG=$(if [ -z "${{ github.event.inputs.tag }}" ]; then echo "${{ github.sha }}"; else echo "${{ github.event.inputs.tag }}"; fi)
+          echo "::set-output name=TAG::$TAG"
+      - uses: go-fjords/deploy-cloud-run@v1
+        name: Deploy ${{ inputs.service-name }}
+        with:
+          service-account-key: ${{ inputs.gcloud-service-account-key }}
+          gcloud-project-id: ${{ inputs.gcloud-environment-project-id }}
+          gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
+          gcloud-artifact-project: ${{ inputs.gcloud-artifact-project-id }}
+          gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
+          gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
+          service-name: ${{ inputs.service-name }}
+          tag: ${{ steps.set-tag.outputs.TAG }}
+          deploy-region: ${{ inputs.gcloud-deploy-region }}
+
+  sync-version:
+    needs: deploy
+    name: Sync version to Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set Tag
+        id: set-tag
+        run: |
+          export TAG=$(if [ -z "${{ github.event.inputs.tag }}" ]; then echo "${{ github.sha }}"; else echo "${{ github.event.inputs.tag }}"; fi)
+          echo "::set-output name=TAG::$TAG"
+      - uses: go-fjords/sync-terraform-version@v1
+        name: Sync Version To Terraform
+        with:
+          token-private-repos: ${{ inputs.github-repos-token }}
+          service-account-key: ${{ inputs.gcloud-service-account-key }}
+          gcloud-project-id: ${{ inputs.gcloud-environment-project-id }}
+          gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
+          gcloud-artifact-project: ${{ inputs.gcloud-artifact-project-id }}
+          gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
+          gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
+          service-name: ${{ inputs.service-name }}
+          environment: ${{ inputs.environment }}
+          file-path: ${{ inputs.terraform-file-path }}
+          tag: ${{ steps.set-tag.outputs.TAG }}
+
+  notify-slack-of-deploy:
+    needs:
+      - deploy
+    if: ${{ always() }}
+    name: Notify Slack of deploy status
+    runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
+      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.sha }}
+      - name: Generate commit message summary
+        id: generate-commit-summary
+        run: |
+          commitSummary=$(git log -1 --pretty=%B | head -n 1)
+          echo "::set-output name=commitSummary::$commitSummary"
+      - name: Notify Slack regarding successfull deploy
+        if: ${{ needs.deploy.result == 'success' }}
+        uses: slackapi/slack-github-action@v1.16.0
+        with:
+          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":rocket: Deployed ${{ inputs.service-name }} to ${{ inputs.environment }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ inputs.slack-cloud-run-url }}|cloud run> - <${{ inputs.slack-logs-url }}|logs> - <${{ inputs.slack-commit-url }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"
+      - name: Notify Slack regarding failed deploy
+        if: ${{ always() && needs.deploy.result == 'failure' }}
+        uses: slackapi/slack-github-action@v1.16.0
+        with:
+          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":boom: Failed to deploy ${{ inputs.service-name }} to ${{ inputs.environment }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ inputs.slack-cloud-run-url }}|cloud run> - <${{ inputs.slack-logs-url }}|logs> - <${{ inputs.slack-commit-url }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"

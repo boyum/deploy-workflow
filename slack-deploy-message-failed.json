@@ -1,0 +1,25 @@
+{
+	"blocks": [
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": ":boom: Failed to deploy ${{ inputs.service-name }} to ${{ inputs.environment }}"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "<${{ inputs.slack-cloud-run-url }}|cloud run> - <${{ inputs.slack-logs-url }}|logs> - <${{ inputs.slack-commit-url }}|commit>"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "${{ steps.generate-commit-summary.outputs.commitSummary }}"
+			}
+		}
+	]
+}
