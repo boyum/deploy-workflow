@@ -59,19 +59,19 @@ jobs:
           echo "::set-output name=TAG::$TAG"
       - uses: google-github-actions/setup-gcloud@v0
         with:
-          service_account_key: ${{ secrets.GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS }}
+          service_account_key: ${{ secrets.gcloud-service-account-key }}
           project_id: ${{ inputs.gcloud-environment-project }}
           export_default_credentials: true
       - name: Get Docker Image Digest
         id: get-docker-image-digest
         run: |
-          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ steps.set-tag.outputs.TAG }})
+          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ steps.set-tag.outputs.TAG }})
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
       - name: Deploy
         run: |-
           gcloud run deploy ${{ inputs.service-name }} \
-          --image ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }} \
+          --image ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }} \
           --region ${{ inputs.gcloud-deploy-region }}
         shell: bash
 
@@ -88,11 +88,11 @@ jobs:
       - uses: go-fjords/sync-terraform-version@v1
         name: Sync Version To Terraform
         with:
-          token-private-repos: ${{ secrets.TOKEN_PRIVATE_REPOS }}
-          service-account-key: ${{ secrets.GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS }}
+          token-private-repos: ${{ secrets.private-repos-token }}
+          service-account-key: ${{ secrets.gcloud-service-account-key }}
           gcloud-project-id: ${{ inputs.gcloud-environment-project }}
           gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
-          gcloud-artifact-project: ${{ secrets.OPERATIONS_GOOGLE_PROJECT_ID }}
+          gcloud-artifact-project: ${{ secrets.gcloud-artifact-project }}
           gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
           gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
           service-name: ${{ inputs.service-name }}
@@ -107,7 +107,7 @@ jobs:
     name: Notify Slack of deploy status
     runs-on: ubuntu-latest
     env:
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK }}
+      SLACK_WEBHOOK_URL: ${{ secrets.slack-webhook-url }}
       SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
       SLACK_CLOUD_RUN_URL: https://console.cloud.google.com/run/detail/${{ inputs.gcloud-deploy-region }}/${{ inputs.service-name }}/metrics?project=${{ secrets.gcloud-environment-project }}
       SLACK_LOGS_URL: https://console.cloud.google.com/logs/viewer?advancedFilter=resource.type%20%3D%20%22cloud_run_revision%22%0Aresource.labels.service_name%20%3D%20%22${{ inputs.service-name }}%22%0Aresource.labels.location%20%3D%20%22${{ inputs.gcloud-deploy-region }}%22%0A%20severity%3E%3DDEFAULT&${{ secrets.gcloud-environment-project }}
