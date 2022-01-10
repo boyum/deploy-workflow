@@ -51,9 +51,9 @@ on:
         required: true
       OPERATIONS_GOOGLE_PROJECT_ID:
         required: true
-      TOKEN_PRIVATE_REPOS: ${{ secrets.TOKEN_PRIVATE_REPOS }}
+      TOKEN_PRIVATE_REPOS:
         required: true
-      SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK: ${{ secrets.SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK }}
+      SLACK_GITHUB_DEPLOYS_NONPROD_WEBHOOK:
         required: true
 
 
