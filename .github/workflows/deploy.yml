@@ -136,14 +136,17 @@ jobs:
         id: generate-commit-summary
         run: |
           commitSummary=$(git log -1 --pretty=%B | head -n 1)
+          commitAuthor=$(git log -1 --pretty=%an)
           echo "::set-output name=commitSummary::$commitSummary"
+          echo "::set-output name=commitAuthor::$commitAuthor"
       - name: Notify Slack regarding successfull deploy
         if: ${{ needs.deploy.result == 'success' }}
         uses: slackapi/slack-github-action@v1.16.0
         with:
-          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":rocket: Deployed *${{ inputs.service-name }}* to *${{ inputs.environment }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"
+          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":rocket: Deployed *${{ inputs.service-name }}* to *${{ inputs.environment }}* by *${{ github.actor }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Authored by: ${{ steps.generate-commit-summary.outputs.commitAuthor }}\"}}]}"
       - name: Notify Slack regarding failed deploy
         if: ${{ always() && needs.deploy.result == 'failure' }}
         uses: slackapi/slack-github-action@v1.16.0
         with:
-          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":boom: Failed to deploy *${{ inputs.service-name }}* to *${{ inputs.environment }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}}]}"
+          payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":boom: Failed to deploy *${{ inputs.service-name }}* to *${{ inputs.environment }}* by *${{ github.actor }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${{ steps.generate-commit-summary.outputs.commitSummary }}\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Authored by: ${{ steps.generate-commit-summary.outputs.commitAuthor }}\"}}]}"
+
