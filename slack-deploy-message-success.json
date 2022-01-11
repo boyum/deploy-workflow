@@ -4,7 +4,7 @@
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": ":rocket: Deployed *${{ inputs.service-name }}* to *${{ inputs.environment }}*"
+				"text": ":rocket: Deployed *${{ inputs.service-name }}* to *${{ inputs.environment }}* by *${{ github.actor }}*"
 			}
 		},
 		{
@@ -19,6 +19,13 @@
 			"text": {
 				"type": "mrkdwn",
 				"text": "${{ steps.generate-commit-summary.outputs.commitSummary }}"
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "Authored by: ${{ steps.generate-commit-summary.outputs.commitAuthor }}"
 			}
 		}
 	]
