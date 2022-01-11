@@ -4,7 +4,7 @@
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
-				"text": ":boom: Failed to deploy ${{ inputs.service-name }} to ${{ inputs.environment }}"
+				"text": ":boom: Failed to deploy *${{ inputs.service-name }}* to *${{ inputs.environment }}*"
 			}
 		},
 		{
