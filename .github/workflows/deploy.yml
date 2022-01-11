@@ -86,20 +86,37 @@ jobs:
         run: |
           export TAG=$(if [ -z "${{ github.event.inputs.tag }}" ]; then echo "${{ github.sha }}"; else echo "${{ github.event.inputs.tag }}"; fi)
           echo "::set-output name=TAG::$TAG"
-      - uses: go-fjords/sync-terraform-version@v1
-        name: Sync Version To Terraform
+      - uses: actions/checkout@v2
         with:
-          token-private-repos: ${{ secrets.private-repos-token }}
-          service-account-key: ${{ secrets.gcloud-service-account-key }}
-          gcloud-project-id: ${{ secrets.gcloud-deploy-project }}
-          gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
-          gcloud-artifact-project: ${{ secrets.gcloud-artifact-project }}
-          gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
-          gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
-          service-name: ${{ inputs.service-name }}
-          environment: ${{ inputs.environment }}
-          file-path: ${{ inputs.terraform-file-path }}
-          tag: ${{ steps.set-tag.outputs.TAG }}
+          repository: 'go-fjords/operation'
+          ref: 'main'
+          token: ${{ secrets.private-repos-token }}
+      - uses: google-github-actions/setup-gcloud@master
+        with:
+          service_account_key: ${{ secrets.gcloud-service-account-key }}
+          project_id: ${{ secrets.gcloud-deploy-project }}
+          export_default_credentials: true
+      - name: Get Docker Image Digest
+        id: get-docker-image-digest
+        run: |
+          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ inputs.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ steps.set-tag.outputs.TAG }})
+          echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
+        shell: bash
+      - run: |
+          echo "Update '${{ inputs.environment }}' in '${{ inputs.terraform-file-path }}' with digest '$DOCKER_IMAGE_DIGEST'"
+          sed -ie "s/${{ inputs.environment }}\(\s*\)= \"sha256:[a-z0-9]*\"/${{ inputs.environment }}\1= \"$DOCKER_IMAGE_DIGEST\"/" ${{ inputs.terraform-file-path }}
+        shell: bash
+        env:
+          DOCKER_IMAGE_DIGEST: ${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST}}
+      - uses: EndBug/add-and-commit@v7
+        id: commit-version-change
+        with:
+          add: ${{ inputs.terraform-file-path }}
+          author_name: Tech@GoFjords
+          author_email: tech@gofjords.com
+          default_author: github_actions
+          message: Updated ${{ inputs.environment }} version for ${{ inputs.service-name }} [skip actions]
+          push: true
 
   notify-slack-of-deploy:
     needs:
