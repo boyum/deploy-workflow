@@ -44,9 +44,11 @@ on:
         description: 'Optional: Add tag to Docker Image'
       gcloud-workload-identity-provider:
         required: true
+        type: string
         description: 'GCloud Identity Provider id to use for federated authentication'
       gcloud-service-account:
         required: true
+        type: string
         description: 'GCloud Service Account to authenticate as, e.g. github-actions@...'
     secrets:
       gcloud-deploy-project:
