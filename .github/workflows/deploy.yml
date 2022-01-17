@@ -65,9 +65,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    # Add "id-token" with the intended permissions.
     permissions:
-      contents: 'read'
       id-token: 'write'
     steps:
       - name: 'Authenticate to Google Cloud'
@@ -95,6 +93,8 @@ jobs:
     needs: deploy
     name: Sync version to Terraform
     runs-on: ubuntu-latest
+    permissions:
+      id-token: 'write'
     steps:
       - uses: go-fjords/sync-terraform-version@v2
         name: Sync Version To Terraform
@@ -117,6 +117,8 @@ jobs:
     name: Add Tag
     if: ${{ inputs.add-tag != null && inputs.add-tag != '' }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: 'write'
     steps:
       - uses: go-fjords/add-gcloud-artifact-docker-tag@v2
         with:
