@@ -58,7 +58,7 @@ on:
         required: true
       private-repos-token:
         required: true
-      slack-webhook-url
+      slack-webhook-url:
         required: true
 
 jobs:
