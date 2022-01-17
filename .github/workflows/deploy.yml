@@ -32,24 +32,24 @@ on:
         description: 'Path to the terraform file managing the versions of the service'
       github-repository:
         required: true
-        type:  string
+        type: string
         description: 'Name of GitHub repository'
       tag:
         required: true
-        type:  string
+        type: string
         description: 'Tag to deploy'
       add-tag:
         required: false
-        type:  string
-        description: 'Optional: Add tag to Docker Image'
-      gcloud-workload-identity-provider:
-        required: true
         type: string
-        description: 'GCloud Identity Provider id to use for federated authentication'
+        description: 'Optional: Add tag to Docker Image'
       gcloud-service-account:
         required: true
         type: string
         description: 'GCloud Service Account to authenticate as, e.g. github-actions@...'
+      gcloud-workload-identity-provider:
+        required: true
+        type: string
+        description: 'GCloud Identity Provider id to use for federated authentication'
     secrets:
       gcloud-deploy-project:
         required: true
@@ -70,8 +70,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
+      - name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v0'
         with:
           workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
@@ -97,16 +96,17 @@ jobs:
     name: Sync version to Terraform
     runs-on: ubuntu-latest
     steps:
-      - uses: go-fjords/sync-terraform-version@v1
+      - uses: go-fjords/sync-terraform-version@v2
         name: Sync Version To Terraform
         with:
           token-private-repos: ${{ secrets.private-repos-token }}
-          service-account-key: ${{ secrets.gcloud-service-account-key }}
           gcloud-project-id: ${{ secrets.gcloud-deploy-project }}
           gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
           gcloud-artifact-project: ${{ secrets.gcloud-artifact-project }}
           gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
           gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
+          gcloud-service-account: ${{ inputs.gcloud-service-account }}
+          gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
           file-path: ${{ inputs.terraform-file-path }}
@@ -118,14 +118,15 @@ jobs:
     if: ${{ inputs.add-tag != null && inputs.add-tag != '' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: go-fjords/add-gcloud-artifact-docker-tag@v1
+      - uses: go-fjords/add-gcloud-artifact-docker-tag@v2
         with:
-          service-account-key: ${{ secrets.gcloud-service-account-key }}
           gcloud-project-id: ${{ secrets.gcloud-deploy-project }}
           gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
           gcloud-artifact-project: ${{ secrets.gcloud-artifact-project }}
           gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
           gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
+          gcloud-service-account: ${{ inputs.gcloud-service-account }}
+          gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
           tag: ${{ inputs.tag }}
           new-tag: ${{ inputs.add-tag }}
 

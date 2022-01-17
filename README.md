@@ -6,14 +6,15 @@ Will update the Terraform repo with the deployed version and notify Slack regard
 
 
 # Tagging
-Create the tag:
 
-`git tag {version}`. Example `git tag v1.0`
+### Create the tag:
 
-Push the tag:
+`git tag {version}`. Example `git tag v1`
 
-`git push origin {version}`. Example `git push origin v1.0`
+### Push the tag:
 
-Deleting a tag
+`git push origin {version}`. Example `git push origin v1`
 
-`git push origin --delete {version}`. Example `git push origin --delete v1.0`
+### Deleting a tag
+
+`git push origin --delete {version}`. Example `git push origin --delete v1`
