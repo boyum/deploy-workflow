@@ -77,9 +77,6 @@ jobs:
           workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
           service_account: ${{ inputs.gcloud-service-account }}
       - uses: google-github-actions/setup-gcloud@v0
-        with:
-          project_id: ${{ secrets.gcloud-deploy-project }}
-          export_default_credentials: true
       - name: Get Docker Image Digest
         id: get-docker-image-digest
         run: |
