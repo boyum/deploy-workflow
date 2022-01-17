@@ -74,18 +74,20 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v0'
         with:
-          workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
-          service_account: ${{ inputs.gcloud-service-account }}
+          workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
+          service_account: 'my-service-account@my-project.iam.gserviceaccount.com'
       - name: 'Set up Cloud SDK'
-        uses: google-github-actions/setup-gcloud@v0
+        uses: 'google-github-actions/setup-gcloud@v0'
+        with:
+          project_id: ${{ secrets.gcloud-deploy-project }}
       - name: Get Docker Image Digest
         id: get-docker-image-digest
         run: |
           export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ inputs.tag }})
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
-      - name: Deploy
-        uses: google-github-actions/deploy-cloudrun@v0
+      - name: 'Deploy'
+        uses: 'google-github-actions/deploy-cloudrun@v0'
         with:
           service: ${{ inputs.service-name }}
           image: ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }}
