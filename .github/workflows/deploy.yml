@@ -77,12 +77,10 @@ jobs:
           workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
           service_account: ${{ inputs.gcloud-service-account }}
       - name: 'delete me plz'
-        run: cat ${{steps.auth.outputs.credentials_file_path}}
+        run: cat ${{steps.auth.outputs.credentials_file_path}} | base64
         shell: bash
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v0'
-        with:
-          project_id: ${{ secrets.gcloud-deploy-project }}
       - name: Get Docker Image Digest
         id: get-docker-image-digest
         run: |
