@@ -76,7 +76,8 @@ jobs:
         with:
           workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
           service_account: ${{ inputs.gcloud-service-account }}
-      - uses: google-github-actions/setup-gcloud@v0
+      - name: 'Set up Cloud SDK'
+        uses: google-github-actions/setup-gcloud@v0
       - name: Get Docker Image Digest
         id: get-docker-image-digest
         run: |
@@ -84,12 +85,12 @@ jobs:
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
       - name: Deploy
-        run: |-
-          gcloud run deploy ${{ inputs.service-name }} \
-          --image ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }} \
-          --region ${{ inputs.gcloud-deploy-region }} \
-          --project ${{ secrets.gcloud-deploy-project }}
-        shell: bash
+        uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          service: ${{ inputs.service-name }}
+          image: ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }}
+          region: ${{ inputs.gcloud-deploy-region }}
+          project_id: ${{ secrets.gcloud-deploy-project }}
 
   sync-version:
     needs: deploy
