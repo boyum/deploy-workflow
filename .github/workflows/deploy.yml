@@ -34,14 +34,6 @@ on:
         required: true
         type: string
         description: 'Name of GitHub repository'
-      tag:
-        required: true
-        type: string
-        description: 'Tag to deploy'
-      add-tag:
-        required: false
-        type: string
-        description: 'Optional: Add tag to Docker Image'
       gcloud-service-account:
         required: true
         type: string
@@ -83,7 +75,7 @@ jobs:
       - name: Get Docker Image Digest
         id: get-docker-image-digest
         run: |
-          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ inputs.tag }})
+          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ github.sha }})
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
       - name: 'Deploy'
@@ -116,12 +108,11 @@ jobs:
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
           file-path: ${{ inputs.terraform-file-path }}
-          tag: ${{ inputs.tag }}
+          tag: ${{ github.sha }}
 
   add-tag:
     needs: deploy
     name: Add Tag
-    if: ${{ inputs.add-tag != null && inputs.add-tag != '' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: 'write'
@@ -135,8 +126,8 @@ jobs:
           gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
           gcloud-service-account: ${{ inputs.gcloud-service-account }}
           gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
-          tag: ${{ inputs.tag }}
-          new-tag: ${{ inputs.add-tag }}
+          tag: ${{ github.sha }}
+          new-tag: ${{ inputs.environment }}
 
   notify-slack-of-deploy:
     needs: deploy
