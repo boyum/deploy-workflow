@@ -61,6 +61,10 @@ on:
       slack-webhook-url:
         required: true
 
+concurrency:
+  group: deploy_${{ inputs.environment }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     name: Deploy
