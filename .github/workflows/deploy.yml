@@ -140,7 +140,7 @@ jobs:
 
   notify-slack-of-deploy:
     needs: deploy
-    if: ${{ always() }}
+    if: ${{ always() && !cancelled()}}
     name: Notify Slack of deploy status
     runs-on: ubuntu-latest
     env:
