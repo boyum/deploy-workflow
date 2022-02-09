@@ -14,26 +14,6 @@ on:
         required: true
         type: string
         description: 'Region to deploy the GCloud Run instance to'
-      gcloud-artifact-region:
-        required: true
-        type: string
-        description: 'Region of the GCloud Artifact'
-      gcloud-artifact-repository:
-        required: true
-        type: string
-        description: 'Repository containing the GCloud Artifact'
-      gcloud-artifact-image:
-        required: true
-        type: string
-        description: 'Docker Image name, do not include the tag.'
-      terraform-file-path:
-        required: true
-        type: string
-        description: 'Path to the terraform file managing the versions of the service'
-      github-repository:
-        required: true
-        type: string
-        description: 'Name of GitHub repository'
       gcloud-service-account:
         required: true
         type: string
@@ -42,15 +22,28 @@ on:
         required: true
         type: string
         description: 'GCloud Identity Provider id to use for federated authentication'
+      github-repository:
+        required: true
+        type: string
+        description: 'Name of GitHub repository'
+      tag:
+        required: true
+        type: string
+        description: 'Docker image tag to deploy'
+      terraform-file-path:
+        required: true
+        type: string
+        description: 'Path to the terraform file managing the versions of the service'
     secrets:
       gcloud-deploy-project:
         required: true
         description: 'GCloud Project ID for the environment deployed to'
-      gcloud-artifact-project:
+      gcloud-docker-image-url:
         required: true
-      private-repos-token:
-        required: true
+        description: 'May contain secrets, therefore it is located under secrets'
       slack-webhook-url:
+        required: true
+      token:
         required: true
 
 concurrency:
@@ -58,10 +51,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Deploy
+  docker-image-digest:
+    name: Get Docker Image Digest
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    outputs:
+      digest: ${{ steps.get-docker-image-digest.DOCKER_IMAGE_DIGEST }}
     permissions:
       id-token: 'write'
     steps:
@@ -75,40 +69,43 @@ jobs:
       - name: Get Docker Image Digest
         id: get-docker-image-digest
         run: |
-          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }} --format='value(version)' --include-tags --filter tags~${{ github.sha }})
+          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ secrets.gcloud-docker-image-url }} --format='value(version)' --include-tags --filter tags~${{ inputs.tag }})
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
+  deploy:
+    needs: docker-image-digest
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: 'write'
+    steps:
       - name: 'Deploy'
         uses: 'google-github-actions/deploy-cloudrun@v0'
         with:
           service: ${{ inputs.service-name }}
-          image: ${{ inputs.gcloud-artifact-region }}-docker.pkg.dev/${{ secrets.gcloud-artifact-project }}/${{ inputs.gcloud-artifact-repository }}/${{ inputs.gcloud-artifact-image }}@${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }}
+          image: ${{ secrets.gcloud-docker-image-url }}@${{ needs.docker-image-digest.outputs.digest }}
           region: ${{ inputs.gcloud-deploy-region }}
           project_id: ${{ secrets.gcloud-deploy-project }}
           flags: --project=${{ secrets.gcloud-deploy-project }}
 
   sync-version:
-    needs: deploy
+    needs:
+      - deploy
+      - docker-image-digest
     name: Sync version to Terraform
     runs-on: ubuntu-latest
     permissions:
       id-token: 'write'
     steps:
-      - uses: go-fjords/sync-terraform-version@v2
+      - uses: go-fjords/sync-terraform-version@v3
         name: Sync Version To Terraform
         with:
-          token-private-repos: ${{ secrets.private-repos-token }}
-          gcloud-project-id: ${{ secrets.gcloud-deploy-project }}
-          gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
-          gcloud-artifact-project: ${{ secrets.gcloud-artifact-project }}
-          gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
-          gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
-          gcloud-service-account: ${{ inputs.gcloud-service-account }}
-          gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
+          token: ${{ secrets.private-repos-token }}
+          file-path: ${{ inputs.terraform-file-path }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
-          file-path: ${{ inputs.terraform-file-path }}
-          tag: ${{ github.sha }}
+          docker-image-digest: ${{ needs.docker-image-digest.outputs.digest }}
 
   add-tag:
     needs: deploy
@@ -117,16 +114,12 @@ jobs:
     permissions:
       id-token: 'write'
     steps:
-      - uses: go-fjords/add-gcloud-artifact-docker-tag@v2
+      - uses: go-fjords/add-gcloud-artifact-docker-tag@v3
         with:
-          gcloud-project-id: ${{ secrets.gcloud-deploy-project }}
-          gcloud-artifact-region: ${{ inputs.gcloud-artifact-region }}
-          gcloud-artifact-project: ${{ secrets.gcloud-artifact-project }}
-          gcloud-artifact-repository: ${{ inputs.gcloud-artifact-repository }}
-          gcloud-artifact-image: ${{ inputs.gcloud-artifact-image }}
           gcloud-service-account: ${{ inputs.gcloud-service-account }}
           gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
-          tag: ${{ github.sha }}
+          gcloud-docker-image-url: ${{ secrets.gcloud-docker-image-url }}
+          tag: ${{ inputs.tag }}
           new-tag: ${{ inputs.environment }}
 
   notify-slack-of-deploy:
