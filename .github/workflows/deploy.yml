@@ -73,21 +73,16 @@ jobs:
           export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ secrets.gcloud-docker-image-url }} --format='value(version)' --include-tags --filter tags~${{ inputs.tag }})
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Login to GAR
-        uses: docker/login-action@v1
-        with:
-          registry: europe-west1-docker.pkg.dev
-          username: _json_key
-          password: ${{ secrets.GOOGLE_SERVICE_CREDENTIALS_GITHUB_ACTIONS }}
+      - name: Configure Docker Login
+        run: gcloud auth configure-docker -q
+        shell: bash
+      - name: Pull Docker Image
+        run: docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
+        shell: bash
       - name: Get Commit SHA
         id: get-commit-sha
         shell: bash
         run: |
-          docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
           export COMMIT_SHA=$(docker inspect --format '{{ index .Config.Labels "github_sha"}}' ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }})
           echo $COMMIT_SHA
           echo "::set-output name=COMMIT_SHA::$COMMIT_SHA"
@@ -142,7 +137,9 @@ jobs:
           new-tag: ${{ inputs.environment }}
 
   notify-slack-of-deploy:
-    needs: deploy
+    needs:
+      - docker-image-details
+      - deploy
     if: ${{ always() && !cancelled() }}
     name: Notify Slack of deploy status
     runs-on: ubuntu-latest
@@ -151,12 +148,12 @@ jobs:
       SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
       SLACK_CLOUD_RUN_URL: https://console.cloud.google.com/run/detail/${{ inputs.gcloud-deploy-region }}/${{ inputs.service-name }}/metrics?project=${{ secrets.gcloud-deploy-project }}
       SLACK_LOGS_URL: https://console.cloud.google.com/logs/viewer?advancedFilter=resource.type%20%3D%20%22cloud_run_revision%22%0Aresource.labels.service_name%20%3D%20%22${{ inputs.service-name }}%22%0Aresource.labels.location%20%3D%20%22${{ inputs.gcloud-deploy-region }}%22%0A%20severity%3E%3DDEFAULT&${{ secrets.gcloud-deploy-project }}
-      SLACK_COMMIT_URL: https://github.com/go-fjords/${{ inputs.github-repository }}/commit/${{ github.sha }}
+      SLACK_COMMIT_URL: https://github.com/go-fjords/${{ inputs.github-repository }}/commit/${{ needs.docker-image-details.outputs.commit-sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.docker-image-details.outputs.commit-sha }}
       - name: Generate commit message summary
         id: generate-commit-summary
         run: |
