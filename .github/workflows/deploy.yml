@@ -52,11 +52,11 @@ concurrency:
 
 jobs:
   docker-image-details:
-    name: Get Docker Image Digest
+    name: Get Docker Image Details
     runs-on: ubuntu-latest
     outputs:
-      digest: ${{ steps.get-docker-image-digest.DOCKER_IMAGE_DIGEST }}
-      commit-sha: ${{ steps.get-commit-sha.COMMIT_SHA }}
+      digest: ${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }}
+      commit-sha: ${{ steps.get-commit-sha.outputs.COMMIT_SHA }}
     permissions:
       id-token: 'write'
     steps:
@@ -91,8 +91,10 @@ jobs:
           export COMMIT_SHA=$(docker inspect --format '{{ index .Config.Labels "github_sha"}}' ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }})
           echo $COMMIT_SHA
           echo "::set-output name=COMMIT_SHA::$COMMIT_SHA"
+
   deploy:
-    needs: docker-image-details
+    needs:
+      - docker-image-details
     name: Deploy
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
