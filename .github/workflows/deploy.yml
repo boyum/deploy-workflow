@@ -62,7 +62,9 @@ jobs:
     steps:
       - name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v0'
+        id: auth
         with:
+          token_format: 'access_token'
           workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
           service_account: ${{ inputs.gcloud-service-account }}
       - name: 'Set up Cloud SDK'
@@ -73,13 +75,14 @@ jobs:
           export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ secrets.gcloud-docker-image-url }} --format='value(version)' --include-tags --filter tags~${{ inputs.tag }})
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
-      - name: Configure Docker Login
-        run: gcloud auth configure-docker -q
-        shell: bash
-      - name: Pull Docker Image@
-        run: |
-          echo "docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}" | base64
-          docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
+      - name: Login to GAR
+        uses: docker/login-action@v1
+        with:
+          registry: europe-west1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+      - name: Pull Docker Image
+        run: docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
         shell: bash
       - name: Get Commit SHA
         id: get-commit-sha
