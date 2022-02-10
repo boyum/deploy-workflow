@@ -51,7 +51,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-image-digest:
+  docker-image-details:
     name: Get Docker Image Digest
     runs-on: ubuntu-latest
     outputs:
@@ -73,7 +73,7 @@ jobs:
           echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
         shell: bash
   deploy:
-    needs: docker-image-digest
+    needs: docker-image-details
     name: Deploy
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
@@ -84,7 +84,7 @@ jobs:
         uses: 'google-github-actions/deploy-cloudrun@v0'
         with:
           service: ${{ inputs.service-name }}
-          image: ${{ secrets.gcloud-docker-image-url }}@${{ needs.docker-image-digest.outputs.digest }}
+          image: ${{ secrets.gcloud-docker-image-url }}@${{ needs.docker-image-details.outputs.digest }}
           region: ${{ inputs.gcloud-deploy-region }}
           project_id: ${{ secrets.gcloud-deploy-project }}
           flags: --project=${{ secrets.gcloud-deploy-project }}
@@ -92,7 +92,7 @@ jobs:
   sync-version:
     needs:
       - deploy
-      - docker-image-digest
+      - docker-image-details
     name: Sync version to Terraform
     runs-on: ubuntu-latest
     permissions:
@@ -105,7 +105,7 @@ jobs:
           file-path: ${{ inputs.terraform-file-path }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
-          docker-image-digest: ${{ needs.docker-image-digest.outputs.digest }}
+          docker-image-digest: ${{ needs.docker-image-details.outputs.digest }}
 
   add-tag:
     needs: deploy
