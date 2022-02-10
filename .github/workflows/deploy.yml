@@ -101,6 +101,12 @@ jobs:
     permissions:
       id-token: 'write'
     steps:
+      - name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v0'
+        id: auth
+        with:
+          workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
+          service_account: ${{ inputs.gcloud-service-account }}
       - name: 'Deploy'
         uses: 'google-github-actions/deploy-cloudrun@v0'
         with:
