@@ -77,13 +77,13 @@ jobs:
         run: gcloud auth configure-docker -q
         shell: bash
       - name: Pull Docker Image
-        run: docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
+        run: docker pull ${{ secrets.gcloud-docker-image-url }}@${{ inputs.tag }}
         shell: bash
       - name: Get Commit SHA
         id: get-commit-sha
         shell: bash
         run: |
-          export COMMIT_SHA=$(docker inspect --format '{{ index .Config.Labels "github_sha"}}' ${{ secrets.gcloud-docker-image-url }}@${{ inputs.tag }})
+          export COMMIT_SHA=$(docker inspect --format '{{ index .Config.Labels "github_sha"}}' ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }})
           echo $COMMIT_SHA
           echo "::set-output name=COMMIT_SHA::$COMMIT_SHA"
   deploy:
