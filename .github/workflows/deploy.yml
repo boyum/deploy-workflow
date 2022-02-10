@@ -76,8 +76,10 @@ jobs:
       - name: Configure Docker Login
         run: gcloud auth configure-docker -q
         shell: bash
-      - name: Pull Docker Image
-        run: docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
+      - name: Pull Docker Image@
+        run: |
+          echo "docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}" | base64
+          docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
         shell: bash
       - name: Get Commit SHA
         id: get-commit-sha
