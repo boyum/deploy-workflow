@@ -128,7 +128,7 @@ jobs:
       - uses: go-fjords/sync-terraform-version@v3
         name: Sync Version To Terraform
         with:
-          token: ${{ secrets.private-repos-token }}
+          token: ${{ secrets.token }}
           file-path: ${{ inputs.terraform-file-path }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
