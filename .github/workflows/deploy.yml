@@ -54,6 +54,7 @@ jobs:
   docker-image-details:
     name: Get Docker Image Details
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     outputs:
       digest: ${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }}
       commit-sha: ${{ steps.get-commit-sha.outputs.COMMIT_SHA }}
@@ -97,7 +98,6 @@ jobs:
       - docker-image-details
     name: Deploy
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     permissions:
       id-token: 'write'
     steps:
