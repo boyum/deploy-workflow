@@ -108,7 +108,6 @@ jobs:
         with:
           workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
           service_account: ${{ inputs.gcloud-service-account }}
-          create_credentials_file: false
       - name: Deploy
         uses: google-github-actions/deploy-cloudrun@v0
         with:
