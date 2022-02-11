@@ -6,7 +6,7 @@ on:
         required: true
         type: string
         description: 'SHA of latest commit which is being deployed'
-      docker-image-digest:
+      digest:
         required: true
         type: string
         description: 'Docker Image Digest to deploy'
@@ -72,7 +72,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v0
         with:
           service: ${{ inputs.service-name }}
-          image: ${{ secrets.gcloud-docker-image-url }}@${{ inputs.docker-image-digest }}
+          image: ${{ secrets.gcloud-docker-image-url }}@${{ inputs.digest }}
           region: ${{ inputs.gcloud-deploy-region }}
           project_id: ${{ secrets.gcloud-deploy-project }}
           flags: --project=${{ secrets.gcloud-deploy-project }}
@@ -92,7 +92,7 @@ jobs:
           file-path: ${{ inputs.terraform-file-path }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
-          docker-image-digest: ${{ inputs.docker-image-digest }}
+          docker-image-digest: ${{ inputs.digest }}
 
   add-tag:
     needs: deploy
@@ -106,7 +106,7 @@ jobs:
           gcloud-service-account: ${{ inputs.gcloud-service-account }}
           gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
           gcloud-docker-image-url: ${{ secrets.gcloud-docker-image-url }}
-          tag: ${{ inputs.docker-image-digest }}
+          tag: ${{ inputs.digest }}
           new-tag: ${{ inputs.environment }}
 
   notify-slack-of-deploy:
