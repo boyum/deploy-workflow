@@ -2,14 +2,18 @@ name: 'Deploy'
 on:
   workflow_call:
     inputs:
+      commit-sha:
+        required: true
+        type: string
+        description: 'SHA of latest commit which is being deployed'
+      digest:
+        required: true
+        type: string
+        description: 'Docker Image Digest to deploy'
       environment:
         required: true
         type: string
         description: 'Environment name which is being deployed to'
-      service-name:
-        required: true
-        type: string
-        description: 'Name of the service, must match the GCloud Run instances name'
       gcloud-deploy-region:
         required: true
         type: string
@@ -26,10 +30,10 @@ on:
         required: true
         type: string
         description: 'Name of GitHub repository'
-      tag:
+      service-name:
         required: true
         type: string
-        description: 'Docker image tag to deploy'
+        description: 'Name of the service, must match the GCloud Run instances name'
       terraform-file-path:
         required: true
         type: string
@@ -51,53 +55,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker-image-details:
-    name: Get Docker Image Details
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    outputs:
-      digest: ${{ steps.get-docker-image-digest.outputs.DOCKER_IMAGE_DIGEST }}
-      commit-sha: ${{ steps.get-commit-sha.outputs.COMMIT_SHA }}
-    permissions:
-      id-token: 'write'
-    steps:
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v0
-        id: auth
-        with:
-          token_format: 'access_token'
-          workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
-          service_account: ${{ inputs.gcloud-service-account }}
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v0'
-      - name: Get Docker Image Digest
-        id: get-docker-image-digest
-        run: |
-          export DOCKER_IMAGE_DIGEST=$(gcloud artifacts docker images list ${{ secrets.gcloud-docker-image-url }} --format='value(version)' --include-tags --filter tags~${{ inputs.tag }})
-          echo "::set-output name=DOCKER_IMAGE_DIGEST::$DOCKER_IMAGE_DIGEST"
-        shell: bash
-      - name: Docker login to GCP
-        uses: docker/login-action@v1
-        with:
-          registry: europe-west1-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-      - name: Pull Docker Image
-        run: docker pull ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }}
-        shell: bash
-      - name: Get Commit SHA
-        id: get-commit-sha
-        shell: bash
-        run: |
-          export COMMIT_SHA=$(docker inspect --format '{{ index .Config.Labels "github_sha"}}' ${{ secrets.gcloud-docker-image-url }}:${{ inputs.tag }})
-          echo $COMMIT_SHA
-          echo "::set-output name=COMMIT_SHA::$COMMIT_SHA"
-
   deploy:
-    needs:
-      - docker-image-details
     name: Deploy
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     permissions:
       id-token: 'write'
     steps:
@@ -111,7 +72,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v0
         with:
           service: ${{ inputs.service-name }}
-          image: ${{ secrets.gcloud-docker-image-url }}@${{ needs.docker-image-details.outputs.digest }}
+          image: ${{ secrets.gcloud-docker-image-url }}@${{ inputs.digest }}
           region: ${{ inputs.gcloud-deploy-region }}
           project_id: ${{ secrets.gcloud-deploy-project }}
           flags: --project=${{ secrets.gcloud-deploy-project }}
@@ -119,20 +80,19 @@ jobs:
   sync-version:
     needs:
       - deploy
-      - docker-image-details
     name: Sync version to Terraform
     runs-on: ubuntu-latest
     permissions:
       id-token: 'write'
     steps:
-      - uses: go-fjords/sync-terraform-version@v3
+      - uses: go-fjords/sync-terraform-version@v4
         name: Sync Version To Terraform
         with:
           token: ${{ secrets.token }}
           file-path: ${{ inputs.terraform-file-path }}
           service-name: ${{ inputs.service-name }}
           environment: ${{ inputs.environment }}
-          docker-image-digest: ${{ needs.docker-image-details.outputs.digest }}
+          docker-image-digest: ${{ inputs.digest }}
 
   add-tag:
     needs: deploy
@@ -146,13 +106,11 @@ jobs:
           gcloud-service-account: ${{ inputs.gcloud-service-account }}
           gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
           gcloud-docker-image-url: ${{ secrets.gcloud-docker-image-url }}
-          tag: ${{ inputs.tag }}
+          tag: ${{ inputs.digest }}
           new-tag: ${{ inputs.environment }}
 
   notify-slack-of-deploy:
-    needs:
-      - docker-image-details
-      - deploy
+    needs: deploy
     if: ${{ always() && !cancelled() }}
     name: Notify Slack of deploy status
     runs-on: ubuntu-latest
@@ -161,12 +119,12 @@ jobs:
       SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
       SLACK_CLOUD_RUN_URL: https://console.cloud.google.com/run/detail/${{ inputs.gcloud-deploy-region }}/${{ inputs.service-name }}/metrics?project=${{ secrets.gcloud-deploy-project }}
       SLACK_LOGS_URL: https://console.cloud.google.com/logs/viewer?advancedFilter=resource.type%20%3D%20%22cloud_run_revision%22%0Aresource.labels.service_name%20%3D%20%22${{ inputs.service-name }}%22%0Aresource.labels.location%20%3D%20%22${{ inputs.gcloud-deploy-region }}%22%0A%20severity%3E%3DDEFAULT&${{ secrets.gcloud-deploy-project }}
-      SLACK_COMMIT_URL: https://github.com/go-fjords/${{ inputs.github-repository }}/commit/${{ needs.docker-image-details.outputs.commit-sha }}
+      SLACK_COMMIT_URL: https://github.com/go-fjords/${{ inputs.github-repository }}/commit/${{ inputs.commit-sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
         with:
-          ref: ${{ needs.docker-image-details.outputs.commit-sha }}
+          ref: ${{ inputs.commit-sha }}
       - name: Generate commit message summary
         id: generate-commit-summary
         run: |
