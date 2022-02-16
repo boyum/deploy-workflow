@@ -78,8 +78,7 @@ jobs:
           flags: --project=${{ secrets.gcloud-deploy-project }}
 
   sync-version:
-    needs:
-      - deploy
+    needs: deploy
     name: Sync version to Terraform
     runs-on: ubuntu-latest
     permissions:
