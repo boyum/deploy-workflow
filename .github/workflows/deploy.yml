@@ -106,7 +106,7 @@ jobs:
           gcloud-service-account: ${{ inputs.gcloud-service-account }}
           gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
           gcloud-docker-image-url: ${{ secrets.gcloud-docker-image-url }}
-          tag: ${{ inputs.digest }}
+          digest: ${{ inputs.digest }}
           new-tag: ${{ inputs.environment }}
 
   notify-slack-of-deploy:
