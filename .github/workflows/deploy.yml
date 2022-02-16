@@ -85,7 +85,7 @@ jobs:
     permissions:
       id-token: 'write'
     steps:
-      - uses: go-fjords/sync-terraform-version@v3
+      - uses: go-fjords/sync-terraform-version@v4
         name: Sync Version To Terraform
         with:
           token: ${{ secrets.token }}
