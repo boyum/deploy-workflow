@@ -35,9 +35,9 @@ on:
         type: string
         description: 'Name of the service, must match the GCloud Run instances name'
       terraform-file-path:
-        required: true
+        required: false
         type: string
-        description: 'Path to the terraform file managing the versions of the service'
+        description: 'Deprecated: Path to the terraform file managing the versions of the service'
     secrets:
       gcloud-deploy-project:
         required: true
@@ -48,7 +48,8 @@ on:
       slack-webhook-url:
         required: true
       token:
-        required: true
+        required: false
+        description: 'Deprecated'
 
 concurrency:
   group: deploy_${{ inputs.environment }}
@@ -76,22 +77,6 @@ jobs:
           region: ${{ inputs.gcloud-deploy-region }}
           project_id: ${{ secrets.gcloud-deploy-project }}
           flags: --project=${{ secrets.gcloud-deploy-project }}
-
-  sync-version:
-    needs: deploy
-    name: Sync version to Terraform
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: 'write'
-    steps:
-      - uses: go-fjords/sync-terraform-version@v4
-        name: Sync Version To Terraform
-        with:
-          token: ${{ secrets.token }}
-          file-path: ${{ inputs.terraform-file-path }}
-          service-name: ${{ inputs.service-name }}
-          environment: ${{ inputs.environment }}
-          docker-image-digest: ${{ inputs.digest }}
 
   add-tag:
     needs: deploy
