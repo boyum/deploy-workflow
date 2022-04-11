@@ -34,10 +34,6 @@ on:
         required: true
         type: string
         description: 'Name of the service, must match the GCloud Run instances name'
-      terraform-file-path:
-        required: false
-        type: string
-        description: 'Deprecated: Path to the terraform file managing the versions of the service'
     secrets:
       gcloud-deploy-project:
         required: true
@@ -47,9 +43,6 @@ on:
         description: 'May contain secrets, therefore it is located under secrets'
       slack-webhook-url:
         required: true
-      token:
-        required: false
-        description: 'Deprecated'
 
 concurrency:
   group: deploy_${{ inputs.environment }}
