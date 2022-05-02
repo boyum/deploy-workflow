@@ -14,6 +14,10 @@ on:
         required: true
         type: string
         description: 'Environment name which is being deployed to'
+      environment-url:
+        required: false
+        type: string
+        description: 'Environment url identifying where service is running'
       gcloud-deploy-region:
         required: true
         type: string
@@ -52,7 +56,9 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment-url }}
     permissions:
       id-token: 'write'
     steps:
