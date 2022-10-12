@@ -111,7 +111,7 @@ jobs:
       - name: Generate commit message summary
         id: generate-commit-summary
         run: |
-          commitSummary=$(git log -1 --pretty=%B | head -n 1 | jq ".")
+          commitSummary=$(git log -1 --pretty=%B | head -n 1 | jq -Rsa .)
           commitAuthor=$(git log -1 --pretty=%an)
           echo "::set-output name=commitSummary::$commitSummary"
           echo "::set-output name=commitAuthor::$commitAuthor"
