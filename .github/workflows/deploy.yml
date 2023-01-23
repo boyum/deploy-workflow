@@ -47,11 +47,9 @@ on:
         description: 'May contain secrets, therefore it is located under secrets'
       slack-webhook-url:
         required: true
-
 concurrency:
   group: deploy_${{ inputs.environment }}
   cancel-in-progress: true
-
 jobs:
   deploy:
     name: Deploy
@@ -63,20 +61,19 @@ jobs:
       id-token: 'write'
     steps:
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v0
+        uses: google-github-actions/auth@ef5d53e30bbcd8d0836f4288f5e50ff3e086997d # ratchet:google-github-actions/auth@v1
         id: auth
         with:
           workload_identity_provider: ${{ inputs.gcloud-workload-identity-provider }}
           service_account: ${{ inputs.gcloud-service-account }}
       - name: Deploy
-        uses: google-github-actions/deploy-cloudrun@v0
+        uses: google-github-actions/deploy-cloudrun@194392f9d796cd42b2617a231eec28e08f9e27e1 # ratchet:google-github-actions/deploy-cloudrun@v1
         with:
           service: ${{ inputs.service-name }}
           image: ${{ secrets.gcloud-docker-image-url }}@${{ inputs.digest }}
           region: ${{ inputs.gcloud-deploy-region }}
           project_id: ${{ secrets.gcloud-deploy-project }}
           flags: --project=${{ secrets.gcloud-deploy-project }}
-
   add-tag:
     needs: deploy
     name: Add Tag
@@ -84,14 +81,13 @@ jobs:
     permissions:
       id-token: 'write'
     steps:
-      - uses: go-fjords/add-gcloud-artifact-docker-tag@v3
+      - uses: go-fjords/add-gcloud-artifact-docker-tag@c70385f78d89de2caf04bd9be0555364dbad8540 # ratchet:go-fjords/add-gcloud-artifact-docker-tag@v3
         with:
           gcloud-service-account: ${{ inputs.gcloud-service-account }}
           gcloud-workload-identity-provider: ${{ inputs.gcloud-workload-identity-provider }}
           gcloud-docker-image-url: ${{ secrets.gcloud-docker-image-url }}
           digest: ${{ inputs.digest }}
           new-tag: ${{ inputs.environment }}
-
   notify-slack-of-deploy:
     needs: deploy
     if: ${{ always() && !cancelled() }}
@@ -105,7 +101,7 @@ jobs:
       SLACK_COMMIT_URL: https://github.com/go-fjords/${{ inputs.github-repository }}/commit/${{ inputs.commit-sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@ac593985615ec2ede58e132d2e21d2b1cbd6127c # ratchet:actions/checkout@v3
         with:
           ref: ${{ inputs.commit-sha }}
       - name: Generate commit message summary
@@ -117,12 +113,11 @@ jobs:
           echo "::set-output name=commitAuthor::$commitAuthor"
       - name: Notify Slack regarding successfull deploy
         if: ${{ needs.deploy.result == 'success' }}
-        uses: slackapi/slack-github-action@v1.22.0
+        uses: slackapi/slack-github-action@ebd044f149bf27a2817c0eee26e98d797fa5cffd # ratchet:slackapi/slack-github-action@v1.22.0
         with:
           payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":rocket: Deployed *${{ inputs.service-name }}* to *${{ inputs.environment }}* by *${{ github.actor }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":${{ steps.generate-commit-summary.outputs.commitSummary }}}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Authored by: ${{ steps.generate-commit-summary.outputs.commitAuthor }}\"}}]}"
       - name: Notify Slack regarding failed deploy
         if: ${{ always() && needs.deploy.result == 'failure' }}
-        uses: slackapi/slack-github-action@v1.22.0
+        uses: slackapi/slack-github-action@ebd044f149bf27a2817c0eee26e98d797fa5cffd # ratchet:slackapi/slack-github-action@v1.22.0
         with:
           payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":boom: Failed to deploy *${{ inputs.service-name }}* to *${{ inputs.environment }}* by *${{ github.actor }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":${{ steps.generate-commit-summary.outputs.commitSummary }}}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Authored by: ${{ steps.generate-commit-summary.outputs.commitAuthor }}\"}}]}"
-
