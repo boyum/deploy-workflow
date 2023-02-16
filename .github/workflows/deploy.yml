@@ -113,11 +113,11 @@ jobs:
           echo "::set-output name=commitAuthor::$commitAuthor"
       - name: Notify Slack regarding successfull deploy
         if: ${{ needs.deploy.result == 'success' }}
-        uses: slackapi/slack-github-action@ebd044f149bf27a2817c0eee26e98d797fa5cffd # ratchet:slackapi/slack-github-action@v1.22.0
+        uses: slackapi/slack-github-action@1.23
         with:
           payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":rocket: Deployed *${{ inputs.service-name }}* to *${{ inputs.environment }}* by *${{ github.actor }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":${{ steps.generate-commit-summary.outputs.commitSummary }}}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Authored by: ${{ steps.generate-commit-summary.outputs.commitAuthor }}\"}}]}"
       - name: Notify Slack regarding failed deploy
         if: ${{ always() && needs.deploy.result == 'failure' }}
-        uses: slackapi/slack-github-action@ebd044f149bf27a2817c0eee26e98d797fa5cffd # ratchet:slackapi/slack-github-action@v1.22.0
+        uses: slackapi/slack-github-action@1.23
         with:
           payload: "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\":boom: Failed to deploy *${{ inputs.service-name }}* to *${{ inputs.environment }}* by *${{ github.actor }}*\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"<${{ env.SLACK_CLOUD_RUN_URL }}|cloud run> - <${{ env.SLACK_LOGS_URL }}|logs> - <${{ env.SLACK_COMMIT_URL }}|commit>\"}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":${{ steps.generate-commit-summary.outputs.commitSummary }}}},{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"Authored by: ${{ steps.generate-commit-summary.outputs.commitAuthor }}\"}}]}"
