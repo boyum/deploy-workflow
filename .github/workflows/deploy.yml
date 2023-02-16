@@ -109,8 +109,8 @@ jobs:
         run: |
           commitSummary=$(git log -1 --pretty=%B | head -n 1 | jq -Rsa .)
           commitAuthor=$(git log -1 --pretty=%an)
-          echo "::set-output name=commitSummary::$commitSummary"
-          echo "::set-output name=commitAuthor::$commitAuthor"
+          echo "{commitSummary}={$commitSummary}" >> $GITHUB_OUTPUT
+          echo "{commitAuthor}={$commitAuthor}" >> $GITHUB_OUTPUT
       - name: Notify Slack regarding successfull deploy
         if: ${{ needs.deploy.result == 'success' }}
         uses: slackapi/slack-github-action@ebd044f149bf27a2817c0eee26e98d797fa5cffd # ratchet:slackapi/slack-github-action@v1.22.0
